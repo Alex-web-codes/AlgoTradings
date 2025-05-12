@@ -1,3 +1,4 @@
+//The strategy is not "DEEP BACKTESTED"
 //@version=6
 strategy("Improved SuperTrend Strategy", overlay=true, default_qty_type=strategy.percent_of_equity, default_qty_value=100)
 
