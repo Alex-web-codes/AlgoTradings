@@ -1,0 +1,53 @@
+//== The strategy is not "BACK TESTED" and has a lower profit factor ==
+//== The strategy is to be used ONLY for RAPID CHANGING market == 
+//**************************************************DO NOT USE IT FOR SIDEWAYS MARKET******************************************************************************
+//@version=6
+strategy("Improved SuperTrend Strategy", overlay=true, default_qty_type=strategy.percent_of_equity, default_qty_value=100)
+
+// === Inputs ===
+length      = input.int(10, 'ATR Length')
+mult        = input.float(3.0, 'ATR Multiplier')
+emaLength   = input.int(50, 'EMA Filter Length')
+rrRatio     = input.float(2.0, 'Reward/Risk Ratio') // e.g., 2 means TP = 2x SL
+slMult      = input.float(1.5, 'Stop Loss ATR Multiplier')
+
+// === Indicators ===
+atr         = ta.atr(length)
+emaFilter   = ta.ema(close, emaLength)
+
+upperBand   = hl2 + mult * atr
+lowerBand   = hl2 - mult * atr
+
+var float upper = na
+var float lower = na
+var int trend = 0
+
+upper := na(upper[1]) ? upperBand : close[1] < upper[1] ? math.min(upperBand, upper[1]) : upperBand
+lower := na(lower[1]) ? lowerBand : close[1] > lower[1] ? math.max(lowerBand, lower[1]) : lowerBand
+
+trend := close > upper ? 1 : close < lower ? -1 : nz(trend[1])
+
+buySignal  = trend == 1 and trend[1] == -1 and close > emaFilter
+sellSignal = trend == -1 and trend[1] == 1 and close < emaFilter
+
+// === Stop Loss and Take Profit based on ATR ===
+sl = atr * slMult
+tp = sl * rrRatio
+
+// === Entry/Exit ===
+if (buySignal)
+    strategy.entry("Long", strategy.long)
+    strategy.exit("TP/SL", from_entry="Long", stop=close - sl, limit=close + tp)
+    strategy.close("Short")  // Close any open short when a buy signal appears
+
+if (sellSignal)
+    strategy.entry("Short", strategy.short)
+    strategy.exit("TP/SL Short", from_entry="Short", stop=close + sl, limit=close - tp)
+    strategy.close("Long")   // Close any open long when a sell signal appears
+
+
+// === Visualization ===
+supertrendLine = trend == 1 ? lower : upper
+plot(supertrendLine, "SuperTrend", color=trend == 1 ? color.teal : color.red)
+plotshape(buySignal, title="Buy Signal", location=location.belowbar, color=color.green, style=shape.labelup, text="BUY")
+plotshape(sellSignal, title="Sell Signal", location=location.abovebar, color=color.red, style=shape.labeldown, text="SELL")
